@@ -28,8 +28,8 @@ public class UpdateGenerator {
     private static final Logger logger = LoggerFactory.getLogger(UpdateGenerator.class);
     private static final String BASE_URL = "https://dist.huly.io/code/";
     private static final String BASE_UPDATE_URL = "https://dist.huly.io/code/update/";
-    private static final String UPDATE_XML = "update.xml";
-    private static final String TARGET_DIR = "build/update";
+    private static final String UPDATE_XML = "updates.xml";
+    private static final String TARGET_DIR = "build/update/";
     private static final String MAJOR_VERSION = "251";
 
     private final int version;
@@ -128,8 +128,8 @@ public class UpdateGenerator {
             channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!"));
         }
 
-        // write update.xml
-        xmlMapper.writeValue(new File(TARGET_DIR + "/update.xml"), products);
+        // write updates.xml
+        xmlMapper.writeValue(new File(TARGET_DIR + UPDATE_XML), products);
         FileUtils.write(new File(TARGET_DIR + "/version.js"), String.format("const version = '%d';", version), StandardCharsets.UTF_8);
         return 0;
     }

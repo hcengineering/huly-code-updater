@@ -9,6 +9,8 @@ import com.hulylabs.updater.model.Products;
 import com.intellij.updater.Runner;
 import org.apache.commons.compress.archivers.ArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
+import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
+import org.apache.commons.compress.archivers.zip.ZipFile;
 import org.apache.commons.compress.compressors.gzip.GzipCompressorInputStream;
 import org.apache.commons.io.FileUtils;
 import org.apache.commons.io.IOUtils;
@@ -20,9 +22,8 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Enumeration;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 
 public class UpdateGenerator {
     private static final Logger logger = LoggerFactory.getLogger(UpdateGenerator.class);
@@ -100,8 +101,7 @@ public class UpdateGenerator {
                         numberStr,
                         targetDir.resolve(prevNumberStr).toString(),
                         targetDir.resolve(numberStr).toString(),
-                        targetPath.resolve(platform.getPatchName(prevNumberStr, numberStr)).toString(),
-                        "--strict"
+                        targetPath.resolve(platform.getPatchName(prevNumberStr, numberStr)).toString()
                 )
                         .inheritIO()
                         .start();
@@ -114,7 +114,7 @@ public class UpdateGenerator {
             patch.from = prevNumberStr;
             patch.size = String.valueOf(Files.size(targetPath.resolve(Platform.LINUX.getPatchName(prevNumberStr, numberStr))) / 1024 / 1024);
             patch.fullFrom = prevNumberStr;
-            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!", patch));
+            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 developer build is now available!", patch));
             try {
                 for (Platform platform : Platform.values()) {
                     Path targetDir = targetPath.resolve(platform.getName());
@@ -125,7 +125,7 @@ public class UpdateGenerator {
             }
         } else {
             logger.info("Previous version not found, add build info without patch");
-            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!"));
+            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 developer build is now available!"));
         }
 
         // write updates.xml
@@ -135,12 +135,14 @@ public class UpdateGenerator {
     }
 
     private static void unzip(Path zipFilePath, Path targetDir, boolean trimRootDir) throws IOException {
-        try (ZipFile zipFile = new ZipFile(zipFilePath.toFile())) {
-            Enumeration<? extends ZipEntry> entries = zipFile.entries();
+        try (ZipFile zipFile = ZipFile.builder().setFile(zipFilePath.toFile()).get()) {
+            Enumeration<? extends ZipArchiveEntry> entries = zipFile.getEntries();
             while (entries.hasMoreElements()) {
-                ZipEntry entry = entries.nextElement();
+                ZipArchiveEntry entry = entries.nextElement();
                 String name = entry.getName();
                 if (trimRootDir) {
+                    // trim applicaiton.app/Contents/ prefix for macos
+                    name = name.substring(name.indexOf('/') + 1);
                     name = name.substring(name.indexOf('/') + 1);
                 }
                 if (name.isBlank()) continue;
@@ -150,6 +152,13 @@ public class UpdateGenerator {
                 } else {
                     Files.createDirectories(extractTo.getParent());
                     zipFile.getInputStream(entry).transferTo(new FileOutputStream(extractTo.toFile()));
+                    if (entry.getUnixMode() != 0) {
+                        try {
+                            Files.setPosixFilePermissions(extractTo, PosixFilePermissions.fromString("rwxr-xr-x"));
+                        } catch (UnsupportedOperationException e) {
+                            // ignore
+                        }
+                    }
                 }
             }
         }

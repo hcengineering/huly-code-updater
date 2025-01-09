@@ -90,6 +90,8 @@ public class UpdateGenerator {
                 // Run patch creation
                 Process process = new ProcessBuilder(
                         System.getProperty("java.home") + "/bin/java",
+                        "-Xms2048m",
+                        "-Xmx6144m",
                         "-classpath",
                         "lib/com.intellij.updater.updater-3.0.jar",
                         Runner.class.getName(),

@@ -24,6 +24,7 @@ import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 
 public class UpdateGenerator {
+    private static final Logger logger = LoggerFactory.getLogger(UpdateGenerator.class);
     private static final String BASE_URL = "https://dist.huly.io/code/";
     private static final String BASE_UPDATE_URL = "https://dist.huly.io/code/update/";
     private static final String UPDATE_XML = "update.xml";
@@ -37,7 +38,6 @@ public class UpdateGenerator {
     }
 
     public Integer process() throws Exception {
-        Logger logger = LoggerFactory.getLogger(UpdateGenerator.class);
         logger.info("Generate update.xml for version '{}'", version);
         Path targetPath = Path.of(TARGET_DIR);
         Files.createDirectories(targetPath);
@@ -106,9 +106,16 @@ public class UpdateGenerator {
                 if (exitCode != 0) {
                     return exitCode;
                 }
-                FileUtils.deleteDirectory(targetDir.toFile());
             }
             channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!"));
+            try {
+                for (Platform platform : Platform.values()) {
+                    Path targetDir = targetPath.resolve(platform.getName());
+                    FileUtils.deleteDirectory(targetDir.toFile());
+                }
+            } catch (Exception e) {
+                logger.warn("Failed to delete directories", e);
+            }
         } else {
             logger.info("Previous version not found, add build info without patch");
             channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!"));
@@ -116,6 +123,7 @@ public class UpdateGenerator {
 
         // write update.xml
         xmlMapper.writeValue(new File(TARGET_DIR + "/update.xml"), products);
+        FileUtils.write(new File(TARGET_DIR + "/version.js"), String.format("const version = '%d';", version), StandardCharsets.UTF_8);
         return 0;
     }
 
@@ -143,7 +151,9 @@ public class UpdateGenerator {
     private static void downloadBinary(Platform platform, String numberStr, Path targetDir) throws IOException {
         Path archiveFile = targetDir.resolve(platform.getDownloadName(numberStr));
         String archiveUrl = BASE_URL + platform.getDownloadName(numberStr);
+        logger.info("Download binary from {}", archiveUrl);
         FileUtils.copyURLToFile(URI.create(archiveUrl).toURL(), archiveFile.toFile());
+        logger.info("Unpack binary from {}", archiveFile);
         switch (platform) {
             case WINDOWS:
                 unzip(archiveFile, targetDir.resolve(numberStr), false);

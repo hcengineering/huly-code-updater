@@ -4,7 +4,7 @@ public enum Platform {
     MAC(
             "mac",
             "huly-code-%s-aarch64.sit",
-            "IC-%s-%s-patch-mac.jar",
+            "IC-%s-%s-patch-aarch64-mac.jar",
             true),
     WINDOWS(
             "win",
@@ -14,7 +14,7 @@ public enum Platform {
     LINUX(
             "linux",
             "huly-code-%s.tar.gz",
-            "IC-%s-%s-patch-linux.jar",
+            "IC-%s-%s-patch-unix.jar",
             false),
     ;
 

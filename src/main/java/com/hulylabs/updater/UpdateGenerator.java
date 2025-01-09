@@ -7,7 +7,7 @@ import com.hulylabs.updater.model.BuildInfoPatch;
 import com.hulylabs.updater.model.ProductChannel;
 import com.hulylabs.updater.model.Products;
 import com.intellij.updater.Runner;
-import org.apache.commons.compress.archivers.ArchiveEntry;
+import org.apache.commons.compress.archivers.tar.TarArchiveEntry;
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream;
 import org.apache.commons.compress.archivers.zip.ZipArchiveEntry;
 import org.apache.commons.compress.archivers.zip.ZipFile;
@@ -22,8 +22,10 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.Enumeration;
+import java.util.HashSet;
 
 public class UpdateGenerator {
     private static final Logger logger = LoggerFactory.getLogger(UpdateGenerator.class);
@@ -187,7 +189,7 @@ public class UpdateGenerator {
     private static void ungzip(Path gzipFilePath, Path targetDir) throws IOException {
         try (BufferedInputStream inputStream = new BufferedInputStream(new FileInputStream(gzipFilePath.toFile()))) {
             TarArchiveInputStream tar = new TarArchiveInputStream(new GzipCompressorInputStream(inputStream));
-            ArchiveEntry entry;
+            TarArchiveEntry entry;
             while ((entry = tar.getNextEntry()) != null) {
                 String name = entry.getName().substring(entry.getName().indexOf('/') + 1);
                 if (name.isBlank()) continue;
@@ -196,7 +198,17 @@ public class UpdateGenerator {
                     Files.createDirectories(extractTo);
                 } else {
                     Files.createDirectories(extractTo.getParent());
-                    Files.copy(tar, extractTo);
+                    if (entry.isSymbolicLink()) {
+                        Files.createSymbolicLink(extractTo, Path.of(entry.getLinkName()));
+                    } else {
+                        Files.copy(tar, extractTo);
+                        //noinspection OctalInteger
+                        if ((entry.getMode() & 0100) != 0) {
+                            HashSet<PosixFilePermission> permissions = new HashSet<>(Files.getPosixFilePermissions(extractTo));
+                            permissions.add(PosixFilePermission.OWNER_EXECUTE);
+                            Files.setPosixFilePermissions(extractTo, permissions);
+                        }
+                    }
                 }
             }
         }

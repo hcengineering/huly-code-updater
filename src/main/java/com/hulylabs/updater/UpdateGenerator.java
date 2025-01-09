@@ -3,6 +3,7 @@ package com.hulylabs.updater;
 import com.fasterxml.jackson.databind.SerializationFeature;
 import com.fasterxml.jackson.dataformat.xml.XmlMapper;
 import com.hulylabs.updater.model.BuildInfo;
+import com.hulylabs.updater.model.BuildInfoPatch;
 import com.hulylabs.updater.model.ProductChannel;
 import com.hulylabs.updater.model.Products;
 import com.intellij.updater.Runner;
@@ -107,7 +108,11 @@ public class UpdateGenerator {
                     return exitCode;
                 }
             }
-            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!"));
+            BuildInfoPatch patch = new BuildInfoPatch();
+            patch.from = prevNumberStr;
+            patch.size = String.valueOf(Files.size(targetPath.resolve(Platform.LINUX.getPatchName(prevNumberStr, numberStr))) / 1024 / 1024);
+            patch.fullFrom = prevNumberStr;
+            channel.builds.add(new BuildInfo(numberStr, "HulyCode EAP 2025.1 is now available!", patch));
             try {
                 for (Platform platform : Platform.values()) {
                     Path targetDir = targetPath.resolve(platform.getName());

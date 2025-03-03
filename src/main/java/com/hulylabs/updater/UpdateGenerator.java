@@ -88,28 +88,32 @@ public class UpdateGenerator {
                 logger.info("Create patch for platform {}", platform.getName());
                 Path targetDir = targetPath.resolve(platform.getName());
                 Files.createDirectories(targetDir);
-                downloadBinary(platform, prevNumberStr, targetDir);
-                downloadBinary(platform, numberStr, targetDir);
-                // Run patch creation
-                Process process = new ProcessBuilder(
-                        System.getProperty("java.home") + "/bin/java",
-                        "-Xms4096m",
-                        "-Xmx8192m",
-                        "-classpath",
-                        "lib/com.intellij.updater.updater-3.0.jar",
-                        Runner.class.getName(),
-                        "create",
-                        prevNumberStr,
-                        numberStr,
-                        targetDir.resolve(prevNumberStr).toString(),
-                        targetDir.resolve(numberStr).toString(),
-                        targetPath.resolve(platform.getPatchName(prevNumberStr, numberStr)).toString()
-                )
-                        .inheritIO()
-                        .start();
-                int exitCode = process.waitFor();
-                if (exitCode != 0) {
-                    return exitCode;
+                try {
+                    downloadBinary(platform, prevNumberStr, targetDir);
+                    downloadBinary(platform, numberStr, targetDir);
+                    // Run patch creation
+                    Process process = new ProcessBuilder(
+                            System.getProperty("java.home") + "/bin/java",
+                            "-Xms4096m",
+                            "-Xmx8192m",
+                            "-classpath",
+                            "lib/com.intellij.updater.updater-3.0.jar",
+                            Runner.class.getName(),
+                            "create",
+                            prevNumberStr,
+                            numberStr,
+                            targetDir.resolve(prevNumberStr).toString(),
+                            targetDir.resolve(numberStr).toString(),
+                            targetPath.resolve(platform.getPatchName(prevNumberStr, numberStr)).toString()
+                    )
+                            .inheritIO()
+                            .start();
+                    int exitCode = process.waitFor();
+                    if (exitCode != 0) {
+                        return exitCode;
+                    }
+                } catch (IOException | InterruptedException e) {
+                    logger.error("Failed to create patch ignore", e);
                 }
             }
             BuildInfoPatch patch = new BuildInfoPatch();
@@ -177,6 +181,7 @@ public class UpdateGenerator {
                 unzip(archiveFile, targetDir.resolve(numberStr), false);
                 break;
             case MAC:
+            case MAC_X64:
                 unzip(archiveFile, targetDir.resolve(numberStr), true);
                 break;
             case LINUX:
